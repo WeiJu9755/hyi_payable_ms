@@ -20,7 +20,7 @@ if (!($detect->isMobile() && !$detect->isTablet())) {
 $xajax = new xajax();
 
 $xajax->registerFunction("DeleteRow");
-function DeleteRow($purchase_order_id)
+function DeleteRow($payable_order_id)
 {
 
 	$objResponse = new xajaxResponse();
@@ -29,7 +29,7 @@ function DeleteRow($purchase_order_id)
 	$mDB = new MywebDB();
 
 	//刪除主資料
-	$Qry = "delete from payable where purchase_order_id = '$purchase_order_id'";
+	$Qry = "delete from payable where payable_order_id = '$payable_order_id'";
 	$mDB->query($Qry);
 
 	$mDB->remove();
@@ -254,7 +254,7 @@ EOT;
 	$show_modify_btn = <<<EOT
 <div class="text-center my-2">
 	<div class="btn-group me-2 mb-2" role="group">
-		<button type="button" class="btn btn-danger text-nowrap" onclick="openfancybox_edit('/index.php?ch=add&t=$t&fm=$fm',1200,'90%','');"><i class="bi bi-plus-circle"></i>&nbsp;新增採購單</button>
+		<button type="button" class="btn btn-danger text-nowrap" onclick="openfancybox_edit('/index.php?ch=add&t=$t&fm=$fm',1200,'90%','');"><i class="bi bi-plus-circle"></i>&nbsp;新增項目</button>
 		<button type="button" class="btn btn-success text-nowrap" onclick="myDraw();"><i class="bi bi-arrow-repeat"></i>&nbsp;重整</button>
 	</div>
 </div>
@@ -271,7 +271,7 @@ EOT;
 				$member_logo
 			</div> 
 			<div class="col-lg-8 col-sm-12 col-md-12 p-1">
-				<div class="size20 pt-1 text-center">採購單管理</div>
+				<div class="size20 pt-1 text-center">應付款項管理</div>
 				$show_modify_btn
 				$show_disabled_warning
 			</div> 
@@ -283,11 +283,12 @@ EOT;
 		<thead class="table-light border-dark">
 			<tr style="border-bottom: 1px solid #000;">
 
-				<th scope="col" class="text-center" style="width:7%;">採購單號</th>
-				<th scope="col" class="text-center" style="width:7%;">採購性質</th>
+				<th scope="col" class="text-center" style="width:7%;">項目單號</th>
+				<th scope="col" class="text-center" style="width:7%;">供應商</th>
+				<th scope="col" class="text-center" style="width:7%;">應付性質</th>
+				<th scope="col" class="text-center" style="width:7%;">發票號碼</th>
 				<th scope="col" class="text-center" style="width:25%;">需求說明</th>
-				<th scope="col" class="text-center" style="width:7%;">訂購日期</th>
-				<th scope="col" class="text-center" style="width:7%;">到貨日期</th>
+				<th scope="col" class="text-center" style="width:7%;">發票日期</th>
 				<th scope="col" class="text-center" style="width:7%;">附檔</th>
 				<th scope="col" class="text-center text-nowrap" style="width:7%;">處理</th>
 			</tr>
@@ -344,40 +345,47 @@ $list_view
         		left: 1,
     		},
 			"fnRowCallback": function( nRow, aData, iDisplayIndex ) {
-
-				var purchase_order_id = "";
+				// 項目單號
+				var payable_order_id = "";
 				if (aData[0] != null && aData[0] != "") {
-					purchase_order_id = aData[0];
+					payable_order_id = aData[0];
 				}
-				$('td:eq(0)', nRow).html('<div class="size14 weight blue02 text-center">'+purchase_order_id+'</div>');
+				$('td:eq(0)', nRow).html('<div class="size14 weight blue02 text-center">'+payable_order_id+'</div>');
 
-				var purchase_type = "";
+				// 供應商
+				var supplier_id = "";
+				if (aData[7] != null && aData[7] != "") {
+					supplier_id = aData[7];
+				}
+				$('td:eq(1)', nRow).html('<div class="size14 weight blue02 text-center">'+supplier_id+'</div>');
+				// 應付性質
+				var payable_type = "";
 				if (aData[1] != null && aData[1] != "") {
-					purchase_type = aData[1];
+					payable_type = aData[1];
 				}
-				$('td:eq(1)', nRow).html('<div class="size14 weight text-center">'+purchase_type+'</div>');
-
-				var requirement_description = "";
+				$('td:eq(2)', nRow).html('<div class="size14 weight text-center">'+payable_type+'</div>');
+				// 發票號碼
+				var invoice_no = "";
 				if (aData[2] != null && aData[2] != "") {
-					requirement_description = aData[2];
+					invoice_no = aData[2];
 				}
-				$('td:eq(2)', nRow).html('<div class="size14 text-start">'+requirement_description+'</div>');
-
-				var order_date = '';
+				$('td:eq(3)', nRow).html('<div class="size14 weight blue02 text-center">'+invoice_no+'</div>');
+				// 需求說明
+				var requirement_description = '';
 				if (aData[3] != null && aData[3] != "" ) {
-					order_date = aData[3];
+					requirement_description = aData[3];
 				}
-				$('td:eq(3)', nRow).html('<div class="size14 text-center">'+order_date+'</div>');
-
-				var delivery_date = '';
+				$('td:eq(4)', nRow).html('<div class="size14 text-center">'+requirement_description+'</div>');
+				// 發票日期
+				var invoice_order_date = '';
 				if (aData[4] != null && aData[4] != "") {
-					delivery_date = aData[4];
+					invoice_order_date = aData[4];
 				}
-				$('td:eq(4)', nRow).html('<div class="size14 text-center">'+delivery_date+'</div>');
-
-				var status = '';
+				$('td:eq(5)', nRow).html('<div class="size14 text-center">'+invoice_order_date+'</div>');
+				// 附檔
+				var payable_status = '';
 				if (aData[6] != null && aData[6] != "") {
-					status = aData[6];
+					payable_status = aData[6];
 				}
 				
 				var show_btn = '';
@@ -387,10 +395,10 @@ $list_view
 				var files_total = '<div class="d-flex justify-content-center align-items-center size12 text-center mt-2" id="files_total'+aData[5]+'"></div>';
 				xajax_returnValue('$web_id','$project_id','$auth_id',aData[5],'payable');
 
-				$('td:eq(5)', nRow).html( '<a href="javascript:void(0);" onclick="'+url3+'" title="上傳檔案">'+files_total+'</a>' );
+				$('td:eq(6)', nRow).html( '<a href="javascript:void(0);" onclick="'+url3+'" title="上傳檔案">'+files_total+'</a>' );
 
 				var mdel = "myDel('" + aData[0] + "');";
-				if (status == '已結單') {
+				if (payable_status == '已結單') {
 					show_btn = '<div class="btn-group text-nowrap">'
 							+ '<button type="button" class="btn btn-light py-0 my-0" onclick="'+url1+'" title="編輯"><i class="bi bi-pencil-square"></i></button>'
 							+'<button type="button" class="btn btn-light" onclick="'+url3+'" title="上傳檔案"><i class="bi bi-file-arrow-up"></i></button>'
@@ -403,7 +411,7 @@ $list_view
 							+ '</div>';
 						}
 				
-				$('td:eq(6)', nRow).html('<div class="text-center">'+show_btn+'</div>');
+				$('td:eq(7)', nRow).html('<div class="text-center">'+show_btn+'</div>');
 
 				return nRow;
 			}
@@ -415,14 +423,14 @@ $list_view
 		
 	} );
 	
-var myDel = function(purchase_order_id){				
+var myDel = function(payable_order_id){				
 	art.dialog({
 		lock: true,
 		icon: 'confirm',
 		skin: 'default',
 		content: '您確定要刪除此筆資料嗎?',
 		yesFn: function(){
-			xajax_DeleteRow(purchase_order_id);
+			xajax_DeleteRow(payable_order_id);
 			return true;
 		},
 		noFn: function(){

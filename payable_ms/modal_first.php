@@ -27,8 +27,17 @@ if (isset($_GET['sid']))
 	//程式分類
 	$ch = empty($_GET['ch']) ? 'default' : $_GET['ch'];
 	switch($ch) {
+		case 'ch_contract':
+			$title = "合約工作項目選單";
+			if (empty($sid))
+				$sid = "view01";
+			$modal = $m_location."/sub_modal/project/func09/payable_ms/ch_contract.php";
+			include $modal;
+			$smarty->assign('show_center',$show_center);
+			$smarty->assign('xajax_javascript', $xajax->getJavascript('/xajax/'));
+			break;
 		case 'add':
-			$title = "新增採購單";
+			$title = "新增項目";
 			$sid = "view01";
 			$modal = $m_location."/sub_modal/project/func09/payable_ms/payable_add.php";
 			include $modal;
@@ -36,7 +45,7 @@ if (isset($_GET['sid']))
 			$smarty->assign('xajax_javascript', $xajax->getJavascript('/xajax/'));
 			break;
 		case 'edit':
-			$title = "編輯採購單";
+			$title = "編輯項目";
 			$sid = "view01";
 			$modal = $m_location."/sub_modal/project/func09/payable_ms/payable_modify.php";
 			include $modal;
@@ -64,6 +73,22 @@ if (isset($_GET['sid']))
 			$title = "編輯料件";
 			$sid = "view01";
 			$modal = $m_location."/sub_modal/project/func09/payable_ms/payable_detail_modify.php";
+			include $modal;
+			$smarty->assign('show_center',$show_center);
+			$smarty->assign('xajax_javascript', $xajax->getJavascript('/xajax/'));
+			break;
+		case 'actual_qty':
+			$title = "實際(工/次/台/只)數";
+			$sid = "view01";
+			$modal = $m_location."/sub_modal/project/func09/payable_ms/actual_qty_modify.php";
+			include $modal;
+			$smarty->assign('show_center',$show_center);
+			$smarty->assign('xajax_javascript', $xajax->getJavascript('/xajax/'));
+			break;
+		case 'remark':
+			$title = "備註";
+			$sid = "view01";
+			$modal = $m_location."/sub_modal/project/func09/payable_ms/payable_remark_modify.php";
 			include $modal;
 			$smarty->assign('show_center',$show_center);
 			$smarty->assign('xajax_javascript', $xajax->getJavascript('/xajax/'));

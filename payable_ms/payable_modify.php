@@ -26,14 +26,8 @@ function processform($aFormValues){
 	$objResponse = new xajaxResponse();
 	
 	$web_id				= trim($aFormValues['web_id']);
-	$order_date		= trim($aFormValues['order_date']);
-	$purchase_order_id		= trim($aFormValues['purchase_order_id']);
-	
-	if (trim($aFormValues['order_date']) == "") {
-		$objResponse->script("jAlert('警示', '請輸入採購日期', 'red', '', 2000);");
-		return $objResponse;
-		exit;
-	}
+	$invoice_order_date		= trim($aFormValues['invoice_order_date']);
+	$payable_order_id		= trim($aFormValues['payable_order_id']);
 
 	SaveValue($aFormValues);
 	
@@ -54,23 +48,26 @@ function SaveValue($aFormValues) {
 
     $mDB = new MywebDB();
     $Qry = "UPDATE payable SET
-                order_date = '{$aFormValues['order_date']}',
+                invoice_order_date = '{$aFormValues['invoice_order_date']}',
+				invoice_no = '{$aFormValues['invoice_no']}',
+				invoice_amt = '{$aFormValues['invoice_amt']}',
                 supplier_id = '{$aFormValues['supplier_id']}',
                 handler_id = '{$aFormValues['handler_id']}',
                 requirement_description = '{$aFormValues['requirement_description']}',
-                delivery_date = '{$aFormValues['delivery_date']}',
+				payment = '{$aFormValues['payment']}',
                 last_modify = NOW() ,
 				memeberID = '$memberID'
-            WHERE purchase_order_id = '{$aFormValues['purchase_order_id']}'";
+            WHERE payable_order_id = '{$aFormValues['payable_order_id']}'";
     $mDB->query($Qry);
     $mDB->remove();
 
    $objResponse->script("autoclose('提示', '存檔完成!', 500);");
+   $objResponse->script("setSave();");
     return $objResponse;
 }
 
-$xajax->registerFunction("payable_detailDeleteRow");
-function payable_detailDeleteRow($auto_seq){
+$xajax->registerFunction("payable_detailsDeleteRow");
+function payable_detailsDeleteRow($auto_seq){
 
 	$objResponse = new xajaxResponse();
 	
@@ -83,7 +80,7 @@ function payable_detailDeleteRow($auto_seq){
 
 	$mDB->remove();
 	
-    $objResponse->script("oTable = $('#payable_detail_table').dataTable();oTable.fnDraw(false)");
+    $objResponse->script("oTable = $('#payable_details_table').dataTable();oTable.fnDraw(false)");
 	$objResponse->script("autoclose('提示', '資料已刪除！', 500);");
 
 	return $objResponse;
@@ -92,12 +89,105 @@ function payable_detailDeleteRow($auto_seq){
 
 $xajax->registerFunction("execute_payable");
 
+function execute_payable($payable_order_id){
+
+	$objResponse = new xajaxResponse();
+	
+	$mDB = "";
+	$mDB = new MywebDB();
+
+	//檢查此入庫單資料是否可以進行入庫作業
+	//先檢查主檔資料
+	$Qry="SELECT * FROM payable
+	where payable_order_id = '$payable_order_id'";
+	$mDB->query($Qry);
+	if ($mDB->rowCount() > 0) {
+		$row=$mDB->fetchRow(2);
+		$invoice_no = $row['invoice_no'];
+		$invoice_amt = $row['invoice_amt'];
+		$handler_id = $row['handler_id'];
+
+
+		if ($invoice_no == "") {
+				$mDB->remove();
+				$objResponse->script("jAlert('警示', '發票號碼不能空白', 'red', '', 2000);");
+				return $objResponse;
+				exit;
+			}
+		if ($invoice_amt == "") {
+				$mDB->remove();
+				$objResponse->script("jAlert('警示', '發票金額不能空白', 'red', '', 2000);");
+				return $objResponse;
+				exit;
+			}
+		if ($handler_id == "") {
+				$mDB->remove();
+				$objResponse->script("jAlert('警示', '供應商不能空白', 'red', '', 2000);");
+				return $objResponse;
+				exit;
+			}
+
+
+	} else {
+		$mDB->remove();
+		$objResponse->script("jAlert('警示', '查無主檔訊息，資料可能有誤', 'red', '', 2000);");
+		return $objResponse;
+		exit;
+	}
+
+
+	$mDB2 = "";
+	$mDB2 = new MywebDB();
+
+	
+	$memberID = $_SESSION['memberID'];
+	
+
+	$mDB5 = "";
+	$mDB5 = new MywebDB();
+	$mDB6 = "";
+	$mDB6 = new MywebDB();
+	$mDB7 = "";
+	$mDB7 = new MywebDB();
+		
+
+
+		//更新主檔狀態
+		$Qry="UPDATE payable set
+				payable_status			= '已結單'
+				,last_modify		= now()
+				,memeberID			= '$memberID'
+				where payable_order_id = '$payable_order_id'";
+		$mDB->query($Qry);
+
+
+
+
+
+		$mDB2->remove();
+		$mDB->remove();
+		$mDB5->remove();
+		$mDB6->remove();
+		$mDB7->remove();
+		
+		// $objResponse->script("oTable = $('#payable_detail_table').dataTable();oTable.fnDraw(false)");
+		$objResponse->script("parent.myDraw();");
+		$objResponse->script("autoclose('提示', '採購入庫作業已完成！',3000);");
+		// $objResponse->script("parent.$.fancybox.close();");
+		// 等待 1 秒後自動重新整理頁面（讓使用者看到提示）
+		$objResponse->script("setTimeout(function(){ location.reload(); }, 1500);");
+
+
+		return $objResponse;
+		
+	}
+
 
 $xajax->processRequest();
 
 
 $fm = $_GET['fm'];
-// $purchase_order_id = $_GET['purchase_order_id'];
+// $payable_order_id = $_GET['payable_order_id'];
 $auto_seq = $_GET['auto_seq'];
 
 $mess_title = $title;
@@ -109,19 +199,22 @@ $mDB = "";
 $mDB = new MywebDB();
 
 $Qry = "SELECT 
-    a.purchase_order_id,
-    a.order_date,
-    a.purchase_type,
-    a.contract_id AS purchase_contract_id, 
+    a.payable_order_id,
+    a.invoice_order_date,
+    a.payable_type,
+    a.contract_id AS payable_contract_id, 
     c.contract_id AS contract_table_id,
     c.contract_caption,
     a.contract_type,
+	a.payment,
     a.supplier_id,
+	a.location,
     a.handler_id,
-    a.status,
+	a.invoice_no,
+    a.payable_status,
     b.employee_name,
-    a.delivery_date,
     a.requirement_description,
+	a.invoice_amt,
     a.last_modify
 FROM payable a
 LEFT JOIN employee b ON b.employee_id = a.handler_id
@@ -133,19 +226,22 @@ $total = $mDB->rowCount();
 if ($total > 0) {
     //已找到符合資料
 	$row=$mDB->fetchRow(2);
-	$purchase_order_id = $row['purchase_order_id'];
-	$order_date = $row['order_date'];
-	$purchase_type = $row['purchase_type'];
-	$purchase_contract_id = $row['purchase_contract_id']; // 來自 payable
-	$_SESSION['contract_id'] = $purchase_contract_id;
+	$payable_order_id = $row['payable_order_id'];
+	$invoice_order_date = $row['invoice_order_date'];
+	$payable_type = $row['payable_type'];
+	$payable_contract_id = $row['payable_contract_id']; // 來自 payable
+	$_SESSION['contract_id'] = $payable_contract_id;
 	$contract_table_id = $row['contract_table_id'];       // 來自 contract
 	$contract_name = $row['contract_caption'];
 	$contract_type = $row['contract_type'];
+	$payment = $row['payment'];
 	$supplier_id = $row['supplier_id'];
+	$location = $row['location'];
 	$handler_id = $row['handler_id'];
-	$status = $row['status'];
+	$invoice_no = $row['invoice_no'];
+	$invoice_amt = number_format($row['invoice_amt'], 2);
+	$payable_status = $row['payable_status'];
 	$employee_name = $row['employee_name'];
-	$delivery_date = $row['delivery_date'];
 	$requirement_description = $row['requirement_description'];
 	$last_modify = $row['last_modify'];
   
@@ -161,6 +257,19 @@ if ($mDB->rowCount() > 0) {
 		$ch_supplier_id = $row['supplier_id'];
 		$ch_supplier_name = $row['supplier_name'];
 		$select_supplier .= "<option value=\"$ch_supplier_id\" ".mySelect($ch_supplier_id,$supplier_id).">$ch_supplier_id $ch_supplier_name</option>";
+	}
+}
+
+// 載入付款方式
+$Qry="SELECT caption FROM items where pro_id ='payment' ORDER BY pro_id,orderby";
+$mDB->query($Qry);
+$select_payment = "";
+$select_payment .= "<option></option>";
+
+if ($mDB->rowCount() > 0) {
+	while ($row=$mDB->fetchRow(2)) {
+		$ch_payment = $row['caption'];
+		$select_payment .= "<option value=\"$ch_payment\" ".mySelect($ch_payment,$payment).">$ch_payment</option>";
 	}
 }
 
@@ -228,51 +337,51 @@ EOT;
 
 
 
-include $m_location."/sub_modal/project/func09/payable_ms/payable_detail.php";
+include $m_location."/sub_modal/project/func09/payable_ms/payable_details.php";
 
 
 $disabled = "";
 
 $show_fellow_btn2 = "";
-if ($status == "未結單") {
+if ($payable_status == "未結單") {
 $show_fellow_btn2=<<<EOT
 <div class="btn-group" role="group">
-	<button type="button" id="execute_purchase_btn" class="btn btn-success btn-sm text-nowrap px-3" onclick="CheckValue(this.form);execute_payable('$purchase_order_id');"><i class="bi bi-box-arrow-in-down"></i>&nbsp;結單作業，並新增入庫單</button>
+	<button type="button" id="execute_payable_btn" class="btn btn-success btn-sm text-nowrap px-3" onclick="CheckValue(this.form);execute_payable('$payable_order_id');"><i class="bi bi-box-arrow-in-down"></i>&nbsp;結單作業，並新增入庫單</button>
 </div>
 EOT; 
 } 
 
 
 $show_fellow_btn = "";
-if ($status == "未結單") {
+if ($payable_status == "未結單") {
 $show_fellow_btn=<<<EOT
 <div class="btn-group" role="group">
-	<button $disabled type="button" class="btn btn-danger btn-sm text-nowrap px-3" onclick="CheckValue(this.form);openfancybox_edit('/index.php?ch=payable_detail_add&contract_id=$purchase_contract_id&supplier_id=$supplier_id&auto_seq=$auto_seq&fm=$fm',800,'96%','');"><i class="bi bi-plus-circle"></i>&nbsp;新增料件</button>
-	<button id="refreshBtn" type="button" class="btn btn-success btn-sm text-nowrap px-3" onclick="payable_detail_myDraw();"><i id="refreshIcon" class="bi bi-arrow-repeat"></i>&nbsp;重整</button>
+	<button $disabled type="button" class="btn btn-danger text-nowrap px-4" onclick="openfancybox_edit('/index.php?ch=ch_contract&payable_order_id=$payable_order_id&contract_id=$contract_table_id&fm=$fm',1024,'96%','');"><i class="bi bi-plus-circle"></i>&nbsp;新增合約工作項目</button>
+	<button type="button" class="btn btn-success text-nowrap px-4" onclick="payable_details_myDraw();"><i class="bi bi-arrow-repeat"></i>&nbsp;重整</button>
 </div>
 EOT; 
-}else if ($status == "已結單") {
+}else if ($payable_status == "已結單") {
 	$show_fellow_btn=<<<EOT
 <div class="btn-group" role="group">
-	<button $disabled type="button" class="btn btn-danger btn-sm text-nowrap px-3" onclick="CheckValue(this.form);openfancybox_edit('/index.php?ch=payable_detail_add&contract_id=$purchase_contract_id&supplier_id=$supplier_id&auto_seq=$auto_seq&fm=$fm',800,'96%','');"><i class="bi bi-plus-circle"></i>&nbsp;新增料件</button>
-	<button id="refreshBtn" type="button" class="btn btn-success btn-sm text-nowrap px-3" onclick="payable_detail_myDraw();"><i id="refreshIcon" class="bi bi-arrow-repeat"></i>&nbsp;重整</button>
+	<button $disabled type="button" class="btn btn-danger btn-sm text-nowrap px-3" onclick="CheckValue(this.form);openfancybox_edit('/index.php?ch=payable_details_add&contract_id=$payable_contract_id&supplier_id=$supplier_id&auto_seq=$auto_seq&fm=$fm',800,'96%','');"><i class="bi bi-plus-circle"></i>&nbsp;新增料件</button>
+	<button id="refreshBtn" type="button" class="btn btn-success btn-sm text-nowrap px-3" onclick="payable_details_myDraw();"><i id="refreshIcon" class="bi bi-arrow-repeat"></i>&nbsp;重整</button>
 </div>
 EOT; 
 }
 $show_savebtn=<<<EOT
 <div class="btn-group vbottom" role="group" style="margin-top:5px;">
 	<button id="save" class="btn btn-primary" type="button" onclick="callSaveValue(this.form);" style="padding: 5px 15px;"><i class="bi bi-check-circle"></i>&nbsp;存檔</button>
-	<button $disabled id="cancel" class="btn btn-secondary display_none" type="button" onclick="setCancel();" style="padding: 5px 15px;"><i class="bi bi-x-circle"></i>&nbsp;取消</button>
+	<button id="cancel" class="btn btn-secondary display_none" type="button" onclick="setCancel();" style="padding: 5px 15px;"><i class="bi bi-x-circle"></i>&nbsp;取消</button>
 	<button id="close" class="btn btn-danger" type="button" onclick="parent.myDraw();parent.$.fancybox.close();" style="padding: 5px 15px;"><i class="bi bi-power"></i>&nbsp;關閉</button>
 </div>
 EOT;
 
 $show_status = "";
-if ($status == "未結單") {
+if ($payable_status == "未結單") {
 	$show_status =<<<EOT
-	<div class="field_div3 pt-3">$status</div>
+	<div class="field_div3 pt-3">$payable_status</div>
 	EOT;
-}else if ($status == "已結單"){
+}else if ($payable_status == "已結單"){
 	$show_status =<<<EOT
 	<div class="field_div3 pt-3" style="color:red;">此單已於 $last_modify 結單</div>
 	EOT;
@@ -300,8 +409,8 @@ $style_css
 					<div class="container-fluid">
 						<div class="row">
 							<div class="col-lg-12 col-sm-12 col-md-12">
-								<div class="field_div1">採購編號:</div>
-								<div class="field_div2"><div class="blue weight mt-2">$purchase_order_id</div></div>
+								<div class="field_div1">項目編號:</div>
+								<div class="field_div2"><div class="blue weight mt-2">$payable_order_id</div></div>
 								
 							</div> 
 						</div>
@@ -309,7 +418,7 @@ $style_css
 					<div class="container-fluid">
 						<div class="row">
 							<div class="col-lg-6 col-sm-6 col-md-12">
-								<div class="field_div1">採購合約:</div>
+								<div class="field_div1">項目合約:</div>
 								<div class="field_div3"><div class="blue weight mt-2">$contract_name</div></div>
 							</div> 
 							<div class="col-lg-6 col-sm-6 col-md-12">
@@ -320,16 +429,32 @@ $style_css
 					</div>
 					<div class="container-fluid">
 						<div class="row">
-							<div class="col-lg-6 col-sm-12 col-md-12">
-								<div class="field_div1">採購日期:</div> 
+							<div class="col-lg-6 col-sm-6 col-md-6">
+								<div class="field_div1">發票號碼:</div> 
 								<div class="field_div3">
-									<div class="input-group" id="order_date"  style="width:100%;max-width:250px;">
-										<input $disabled type="text" class="form-control" name="order_date" placeholder="請輸入入庫日期" aria-describedby="order_date" value="$order_date" onchange="setEdit();">
-										<button $disabled class="btn btn-outline-secondary input-group-append input-group-addon" type="button" data-target="#order_date" data-toggle="datetimepicker"><i class="bi bi-calendar"></i></button>
+									<input type="text" class="inputtext" name="invoice_no" id="invoice_no" size="50" placeholder="請輸入發票號碼" maxlength="50" style="width:100%;max-width:250px;" value='$invoice_no' />
+								</div> 
+							</div> 
+							<div class="col-lg-6 col-sm-6 col-md-6">
+								<div class="field_div1">付款方式:</div> 
+								<div class="field_div3">
+									<select $disabled id="payment" name="payment" value="$payment" style="width:100%;max-width:250px;" onchange="setEdit();">
+										$select_payment
+									</select>
+								</div> 
+							</div> 
+						</div>
+						<div class="row">
+							<div class="col-lg-6 col-sm-12 col-md-12">
+								<div class="field_div1">發票日期:</div> 
+								<div class="field_div3">
+									<div class="input-group" id="invoice_order_date"  style="width:100%;max-width:250px;">
+										<input $disabled type="text" class="form-control" name="invoice_order_date" placeholder="請輸入入庫日期" aria-describedby="invoice_order_date" value="$invoice_order_date" onchange="setEdit();">
+										<button $disabled class="btn btn-outline-secondary input-group-append input-group-addon" type="button" data-target="#invoice_order_date" data-toggle="datetimepicker"><i class="bi bi-calendar"></i></button>
 									</div>
 									<script type="text/javascript">
 										$(function () {          
-											$('#order_date').datetimepicker({
+											$('#invoice_order_date').datetimepicker({
 												locale: 'zh-tw'
 												,format:"YYYY-MM-DD"
 												,allowInputToggle: true
@@ -341,7 +466,7 @@ $style_css
 							<div class="col-lg-6 col-sm-12 col-md-12">
 								<div class="field_div1">採購性質:</div> 
 								<div class="field_div3">
-									<div class="field_div2"><div class="weight">$purchase_type</div></div>
+									<div class="field_div2"><div class="weight">$payable_type</div></div>
 									
 								</div> 
 							</div> 
@@ -356,6 +481,10 @@ $style_css
 										$select_supplier
 									</select>
 								</div> 
+							</div>
+								<div class="col-lg-6 col-sm-12 col-md-12">
+								<div class="field_div1">施作地點:</div> 
+								<div class="field_div3 pt-3">$location</div>
 							</div> 
 						</div>
 						<div class="row">
@@ -363,9 +492,9 @@ $style_css
 								<div class="field_div1">經辦人:</div> 
 								<div class="field_div3">
 									<div class="input-group text-nowrap" style="width:100%;max-width:450px;">
-										<input $disabled readonly type="text" class="form-control w-25" id="handler_id" name="handler_id" aria-describedby="handler_id_addon" value="$handler_id" onchange="setEdit();"/>
-										<input $disabled readonly type="text" class="form-control w-50" id="employee_name" name="employee_name"  value="$employee_name" onchange="setEdit();"/>
-										<button $disabled class="btn btn-outline-secondary w-25" type="button" id="handler_id_addon" onclick="openfancybox_edit('/index.php?ch=ch_employee&fm=$fm',800,'96%','');">選擇員工</button>
+										<input readonly type="text" class="form-control w-25" id="handler_id" name="handler_id" aria-describedby="handler_id_addon" value="$handler_id"/>
+											<input readonly type="text" class="form-control w-50" id="makeby" name="makeby"  value="$employee_name"/>
+											<button class="btn btn-outline-secondary w-25" type="button" id="handler_id_addon" onclick="openfancybox_edit('/index.php?ch=ch_employee&fm=$fm',800,'96%','');">選擇員工</button>
 									</div> 
 								</div> 
 							</div> 
@@ -378,50 +507,32 @@ $style_css
 								<div class="field_div3">
 									<textarea $disabled class="inputtext w-100 p-3" id="requirement_description" name="requirement_description" cols="80" rows="1" style="max-width: 500px;" onchange="setEdit();">$requirement_description</textarea>
 								</div> 
+							</div>
+							
+						</div>
+						<div class="row">
+							<div class="col-lg-6 col-sm-12 col-md-12">
+								<div class="field_div1">發票金額:</div> 
+								<div class="field_div3">
+									<input type="text" class="inputtext" name="invoice_amt" id="invoice_amt" size="50" placeholder="請輸入發票金額" maxlength="50" style="width:100%;max-width:250px;" value='$invoice_amt' />
+								</div> 
 							</div> 
 								<div class="col-lg-6 col-sm-12 col-md-12">
 								<div class="field_div1">狀態:</div>
 								$show_status
 							</div> 
 						</div>
-
-							<div class="row">
-
-								<div class="col-lg-6 col-sm-12 col-md-12">
-									<div class="row" >
-										<div class="field_div1">到貨日期:</div> 
-										<div class="field_div3">
-											<div class="input-group" id="delivery_date"  style="width:100%;max-width:250px;">
-												<input type="text" class="form-control" name="delivery_date" placeholder="請輸入入庫日期" aria-describedby="delivery_date" value="$delivery_date" onchange="setEdit();">
-												<button class="btn btn-outline-secondary input-group-append input-group-addon" type="button" data-target="#delivery_date" data-toggle="datetimepicker"><i class="bi bi-calendar"></i></button>
-											</div>
-											<script type="text/javascript">
-												$(function () {          
-													$('#delivery_date').datetimepicker({
-														locale: 'zh-tw'
-														,format:"YYYY-MM-DD"
-														,allowInputToggle: true
-													});
-												});
-											</script>
-										</div> 
-									</div> 
-								</div>
-
-							</div>
-							
-
 					</div>
 					<div class="w-100" style="margin: 10px 0 -15px 0;">
-						<div class="inline size14 weight mx-5">採購清單</div>
+						<div class="inline size14 weight mx-5">應付款項清單</div>
 						<div class="inline">$show_fellow_btn</div>
 						<div class="inline float-end me-5">$show_fellow_btn2</div>
 					</div>
-					$show_payable_detail
+					$show_payable_details
 					<div>
 						<input type="hidden" name="fm" value="$fm" />
 						<input type="hidden" name="site_db" value="$site_db" />
-						<input type="hidden" name="purchase_order_id" value="$purchase_order_id" />
+						<input type="hidden" name="payable_order_id" value="$payable_order_id" />
 						<input type="hidden" name="memberID" value="$memberID" />
 					</div>
 				</div>
@@ -463,7 +574,7 @@ $(document).ready(function() {
 	});
 });
 
-var execute_payable = function(purchase_order_id){				
+var execute_payable = function(payable_order_id){				
 
 	Swal.fire({
 	title: "您確定要執行結單作業嗎?",
@@ -476,26 +587,13 @@ var execute_payable = function(purchase_order_id){
 	confirmButtonText: "確認執行"
 	}).then((result) => {
 		if (result.isConfirmed) {
-			xajax_execute_payable(purchase_order_id);
+			xajax_execute_payable(payable_order_id);
 		}
 	});
 
 };
 
-var payable_detail_myDraw = function(){
-    // 變成 loading 圖示
-    document.getElementById('refreshIcon').classList.add('spinner-border', 'spinner-border-sm');
-    document.getElementById('refreshIcon').classList.remove('bi', 'bi-arrow-repeat');
 
-    var oTable = $('#payable_detail_table').dataTable();
-    oTable.fnDraw(false);
-
-    // 0.5 秒後恢復原圖示
-    setTimeout(function(){
-        document.getElementById('refreshIcon').classList.remove('spinner-border', 'spinner-border-sm');
-        document.getElementById('refreshIcon').classList.add('bi', 'bi-arrow-repeat');
-    }, 500);
-}
 
 
 
@@ -503,7 +601,7 @@ $(document).ready(async function() {
 	//等待其他資源載入完成，此方式適用大部份瀏覽器
 	consle.log("等待其他資源載入完成...");
 	await new Promise(resolve => setTimeout(resolve, 100));
-	$('#order_date').focus();
+	$('#invoice_order_date').focus();
 });
 
 </script>

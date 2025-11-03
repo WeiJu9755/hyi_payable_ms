@@ -17,21 +17,26 @@ $detect = new Mobile_Detect;
 $xajax = new xajax();
 
 $xajax->registerFunction("processform");
-$delivery_date= "";
 
 function processform($aFormValues){
 
 	$objResponse = new xajaxResponse();
 
-	if (trim($aFormValues['purchase_type']) == "") {
-		$objResponse->script("jAlert('警示', '請選擇採購性質', 'red', '', 2000);");
+	if (trim($aFormValues['payable_type']) == "") {
+		$objResponse->script("jAlert('警示', '請選擇應付性質', 'red', '', 2000);");
 		return $objResponse;
 
 	}
 
 
 	if (trim($aFormValues['contract_type']) == "") {
-		$objResponse->script("jAlert('警示', '請選擇採購合約種類', 'red', '', 2000);");
+		$objResponse->script("jAlert('警示', '請選擇應付合約種類', 'red', '', 2000);");
+		return $objResponse;
+
+	}
+
+	if (trim($aFormValues['payment']) == "") {
+		$objResponse->script("jAlert('警示', '請選擇付款方式', 'red', '', 2000);");
 		return $objResponse;
 
 	}
@@ -43,13 +48,13 @@ function processform($aFormValues){
 	}
 	
 	if (trim($aFormValues['requirement_description']) == "") {
-		$objResponse->script("jAlert('警示', '請輸入採購需求說明', 'red', '', 2000);");
+		$objResponse->script("jAlert('警示', '請輸入應付項目需求說明', 'red', '', 2000);");
 		return $objResponse;
 
 	}
 
-	if (trim($aFormValues['order_date']) == "") {
-		$objResponse->script("jAlert('警示', '請輸入採購日期', 'red', '', 2000);");
+	if (trim($aFormValues['invoice_order_date']) == "") {
+		$objResponse->script("jAlert('警示', '請輸入項目日期', 'red', '', 2000);");
 		return $objResponse;
 
 	}
@@ -67,18 +72,20 @@ function processform($aFormValues){
 	$templates					= trim($aFormValues['templates']);
 	$handler_id					= trim($aFormValues['handler_id']);
 	$big_fixed 					= (trim($aFormValues['big_fixed']) === "Y") ? "Y" : "N";
-	$purchase_type				= trim($aFormValues['purchase_type']);
+	$payable_type				= trim($aFormValues['payable_type']);
 	$contract_id 				= trim($aFormValues['contract_id']);
 	$contract_type 				= trim($aFormValues['contract_type']);
+	$payment 					= trim($aFormValues['payment']);
+	$invoice_no				    = trim($aFormValues['invoice_no']);
+	$invoice_amt				    = trim($aFormValues['invoice_amt']);
 	$makeby 					= trim($aFormValues['makeby']);
 	$requirement_description 	= trim($aFormValues['requirement_description']);
-	$order_date 				= trim($aFormValues['order_date']);
-	$delivery_date 				= trim($aFormValues['delivery_date']);
+	$invoice_order_date 		= trim($aFormValues['invoice_order_date']);
 	$supplier_id 				= trim($aFormValues['supplier_id']);
 	$location 					= trim($aFormValues['location']);
-	$purchase_order_id 			= "";
+	$payable_order_id 			= "";
 
-	// 採購編號生成
+	// 應付編號生成
 	$mDB = "";
 	$mDB = new MywebDB();
 	$Qry="select * from contract where contract_id='$contract_id' ";
@@ -87,28 +94,28 @@ function processform($aFormValues){
 		$row=$mDB->fetchRow(2);
 		$contract_code = $row['contract_code'];
 		$roc_year = date("Y") - 1911;
-		$step_purchase_order_id = $contract_code . "_" . sprintf("%03d", $roc_year) . date("md") . "_";
+		$step_payable_order_id = $contract_code . "_" . sprintf("%03d", $roc_year) . date("md") . "_";
 	}
 		
 	$mDB2 = "";
 	$mDB2 = new MywebDB();
-	$Qry2 = "SELECT purchase_order_id 
+	$Qry2 = "SELECT payable_order_id 
          FROM payable 
-         WHERE LEFT(purchase_order_id, LENGTH(purchase_order_id) - 2) = '$step_purchase_order_id'
-         ORDER BY purchase_order_id DESC 
+         WHERE LEFT(payable_order_id, LENGTH(payable_order_id) - 2) = '$step_payable_order_id'
+         ORDER BY payable_order_id DESC 
          LIMIT 1";
 	$mDB2->query($Qry2);
 	if ($mDB2->rowCount() > 0) {
         $row3 = $mDB2->fetchRow(2);
-        $last_id = $row3['purchase_order_id'];
+        $last_id = $row3['payable_order_id'];
         $last_sn = substr($last_id, -2); // 取最後兩碼流水號
         $new_sn = sprintf("%02d", intval($last_sn) + 1); // 加1並補零
     } else {
         $new_sn = "01"; // 第一筆從 01 開始
     }
 
-	// 組成新的採購單號
-    $purchase_order_id = $step_purchase_order_id . $new_sn;
+	// 組成新的應付單號
+    $payable_order_id = $step_payable_order_id . $new_sn;
 
 
 	//存入實體資料庫中
@@ -117,31 +124,33 @@ function processform($aFormValues){
 	
 	$now = date("Y-m-d H:i:s");
 	$Qry = " INSERT INTO `payable` (
-    `purchase_order_id`,
+    `payable_order_id`,
     `handler_id`,
-    `purchase_type`,
+    `payable_type`,
     `contract_id`,
     `contract_type`,
-    `big_fixed`,
+	`payment`,
     `makeby`,
+	`invoice_no`,
+	`invoice_amt`,
     `requirement_description`,
-    `order_date`,
-    `delivery_date`,
+    `invoice_order_date`,
     `supplier_id`,
     `location`,
     `created_at`,
     `last_modify`
 ) VALUES (
-    '$purchase_order_id',
+    '$payable_order_id',
     '$handler_id',
-    '$purchase_type',
+    '$payable_type',
     '$contract_id',
     '$contract_type',
-    '$big_fixed',
+	'$payment',
     '$makeby',
+	'$invoice_no',
+	'$invoice_amt',
     '$requirement_description',
-    '$order_date',
-    '$delivery_date',
+    '$invoice_order_date',
     '$supplier_id',
     '$location',
     '$now',
@@ -150,7 +159,7 @@ function processform($aFormValues){
 	$mDB->query($Qry);
 
 	$mDB->remove();
-	if (!empty($purchase_order_id)) {
+	if (!empty($payable_order_id)) {
 		$objResponse->script("myDraw();");
 		$objResponse->script("art.dialog.tips('已新增，請繼續輸入其他資料...',2);");
 		$objResponse->script("parent.$.fancybox.close();");
@@ -222,6 +231,18 @@ if ($mDB->rowCount() > 0) {
 	}
 }
 
+// 載入付款方式
+$Qry="SELECT caption FROM items where pro_id ='payment' ORDER BY pro_id,orderby";
+$mDB->query($Qry);
+$select_payment = "";
+$select_payment .= "<option></option>";
+
+if ($mDB->rowCount() > 0) {
+	while ($row=$mDB->fetchRow(2)) {
+		$ch_payment = $row['caption'];
+		$select_payment .= "<option value=\"$ch_payment\" ".mySelect($ch_payment,$payment).">$ch_payment</option>";
+	}
+}
   
 $mDB->remove();
 
@@ -323,16 +344,32 @@ $style_css
 							</div> 
 						</div>
 						<div class="row">
+							<div class="col-lg-6 col-sm-6 col-md-6">
+								<div class="field_div1">發票號碼:</div> 
+								<div class="field_div2">
+									<input type="text" class="inputtext" name="invoice_no" id="invoice_no" size="50" placeholder="請輸入發票號碼" maxlength="50" style="width:100%;max-width:250px;"/>
+								</div> 
+							</div> 
+							<div class="col-lg-6 col-sm-6 col-md-6">
+								<div class="field_div1">付款方式:</div> 
+								<div class="field_div2">
+									<select id="payment" name="payment" placeholder="請選擇付款方式" style="width:100%;max-width:250px;">
+										$select_payment
+									</select>
+								</div> 
+							</div> 
+						</div>
+						<div class="row">
 							<div class="col-lg-6 col-sm-12 col-md-12">
-								<div class="field_div1">採購日期:</div> 
+								<div class="field_div1">發票日期:</div> 
 								<div class="field_div3">
-									<div class="input-group" id="order_date"  style="width:100%;max-width:250px;">
-										<input type="text" class="form-control" name="order_date" placeholder="請輸入入庫日期" aria-describedby="order_date" value="$default_day">
-										<button class="btn btn-outline-secondary input-group-append input-group-addon" type="button" data-target="#order_date" data-toggle="datetimepicker"><i class="bi bi-calendar"></i></button>
+									<div class="input-group" id="invoice_order_date"  style="width:100%;max-width:250px;">
+										<input type="text" class="form-control" name="invoice_order_date" placeholder="請輸入入庫日期" aria-describedby="invoice_order_date" value="$default_day">
+										<button class="btn btn-outline-secondary input-group-append input-group-addon" type="button" data-target="#invoice_order_date" data-toggle="datetimepicker"><i class="bi bi-calendar"></i></button>
 									</div>
 									<script type="text/javascript">
 										$(function () {
-											$('#order_date').datetimepicker({
+											$('#invoice_order_date').datetimepicker({
 												locale: 'zh-tw'
 												,format:"YYYY-MM-DD"
 												,allowInputToggle: true
@@ -342,9 +379,9 @@ $style_css
 								</div> 
 							</div> 
 							<div class="col-lg-6 col-sm-12 col-md-12">
-								<div class="field_div1">採購性質:</div> 
+								<div class="field_div1">應付性質:</div> 
 								<div class="field_div2">
-									<select id="purchase_type" name="purchase_type" placeholder="請選擇採購性質" style="width:100%;max-width:250px;">
+									<select id="payable_type" name="payable_type" placeholder="請選擇應付性質" style="width:100%;max-width:250px;">
 										<option></option>
 										<option value="採購">採購</option>
 										<option value="勞務">勞務</option>
@@ -355,17 +392,22 @@ $style_css
 						</div>
 						<div class="row">
 							<div class="col-lg-6 col-sm-12 col-md-12">
-									<div class="field_div1">經辦人:</div> 
-									<div class="field_div3">
-										
-										<div class="input-group text-nowrap" style="width:100%;max-width:450px;">
-											<input readonly type="text" class="form-control w-25" id="handler_id" name="handler_id" aria-describedby="handler_id_addon" value="$employee_id"/>
-											<input readonly type="text" class="form-control w-50" id="makeby" name="makeby"  value="$makeby"/>
-											<button class="btn btn-outline-secondary w-25" type="button" id="handler_id_addon" onclick="openfancybox_edit('/index.php?ch=ch_employee&fm=$fm',800,'96%','');">選擇員工</button>
-										</div> 
+								<div class="field_div1">經辦人:</div> 
+								<div class="field_div3">
+									
+									<div class="input-group text-nowrap" style="width:100%;max-width:450px;">
+										<input readonly type="text" class="form-control w-25" id="handler_id" name="handler_id" aria-describedby="handler_id_addon" value="$employee_id"/>
+										<input readonly type="text" class="form-control w-50" id="makeby" name="makeby"  value="$makeby"/>
+										<button class="btn btn-outline-secondary w-25" type="button" id="handler_id_addon" onclick="openfancybox_edit('/index.php?ch=ch_employee&fm=$fm',800,'96%','');">選擇員工</button>
 									</div> 
 								</div> 
 							</div>
+							<div class="col-lg-6 col-sm-12 col-md-12">
+								<div class="field_div1">施作地點:</div> 
+								<div class="field_div2">
+									<input type="text" class="inputtext" name="location" id="location" size="50" placeholder="請輸入施作地點" maxlength="50" style="width:100%;max-width:250px;"/>
+								</div> 
+							</div> 
 						</div>
 						<div class="row">
 							<div class="col-lg-6 col-sm-12 col-md-12">
@@ -386,35 +428,14 @@ $style_css
 							</div> 
 						</div>
 						<div class="row">
-							<div class="col-lg-12 col-sm-12 col-md-12">
-								<div class="field_div1">施作地點:</div> 
-								<div class="field_div2">
-									<input type="text" class="inputtext" name="location" id="location" size="50" placeholder="請輸入施作地點" maxlength="50" style="width:100%;max-width:250px;"/>
+							<div class="col-lg-6 col-sm-12 col-md-12">
+								<div class="field_div1">發票金額:</div> 
+								<div class="field_div3">
+									<input type="text" class="inputtext" name="invoice_amt" id="invoice_amt" size="50" placeholder="請輸入發票金額" maxlength="50" style="width:100%;max-width:250px;" value='$invoice_amt' />
 								</div> 
 							</div> 
 						</div>
-								<div class="row" id="delivery_date_section">
-								<div class="col-lg-6 col-sm-12 col-md-12">
-									<div class="field_div1">到貨日期:</div> 
-									<div class="field_div3">
-									<div class="input-group" id="delivery_date" style="width:100%;max-width:250px;">
-										<input type="text" class="form-control" name="delivery_date" placeholder="請輸入入庫日期" aria-describedby="delivery_date" >
-										<button class="btn btn-outline-secondary input-group-append input-group-addon" type="button" data-target="#delivery_date" data-toggle="datetimepicker">
-										<i class="bi bi-calendar"></i>
-										</button>
-									</div>
-									<script type="text/javascript">
-										$(function () {
-										$('#delivery_date').datetimepicker({
-											locale: 'zh-tw',
-											format: "YYYY-MM-DD",
-											allowInputToggle: true
-										});
-										});
-									</script>
-									</div> 
-								</div> 
-								</div>
+								
 					</div>
 				</div>
 

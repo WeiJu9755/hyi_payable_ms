@@ -4,7 +4,8 @@
 	@include_once '/website/include/pub_function.php';
 
 	$site_db = $_GET['site_db'];
-	$purchase_order_id = $_GET['purchase_order_id'];
+	$contract_id = $_GET['contract_id'];
+	$payable_order_id = $_GET['payable_order_id'];
 	
 	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 	 * Easy set variables 詮能
@@ -13,7 +14,7 @@
 	/* Array of database columns which should be read and sent back to DataTables. Use a space where
 	 * you want to insert a non-database field (for example a counter or static image)
 	 */
-	$aColumns = array( 'a.material_no','b.material_name','b.unit','a.warehouse','a.purchase_qty','a.unit_price','a.location_id','a.remarks','a.auto_seq','a.seq','a.work_project','a.purchase_order_id','a.last_modify','b.specification');
+	$aColumns = array( 'a.seq','c.work_project','c.unit','c.unit_price','c.contracts_qty','a.actual_qty','a.remark','a.auto_seq','a.payable_order_id','a.contract_id');
 	
 	/* Indexed column (used for fast and accurate table cardinality) */
 	$sIndexColumn = "auto_seq";
@@ -52,7 +53,7 @@
 	/*
 	 * Ordering
 	 */
-	$sOrder = "ORDER BY a.purchase_order_id,a.auto_seq ";
+	$sOrder = "ORDER BY a.payable_order_id,a.contract_id,a.seq ";
 	/*
 	if ( isset( $_GET['iSortCol_0'] ) )
 	{
@@ -116,15 +117,16 @@
 
 	
 	if ($sWhere=="")
-		$sWhere = "WHERE a.purchase_order_id = '$purchase_order_id' ";
+		$sWhere = " WHERE (a.payable_order_id = '$payable_order_id' AND a.contract_id = '$contract_id')";
 	else
-		$sWhere .= " and a.purchase_order_id = '$purchase_order_id' ";
+		$sWhere .= " and (a.payable_order_id = '$payable_order_id' AND a.contract_id = '$contract_id')";
 	
 	 
 	$sQuery = "
 		SELECT SQL_CALC_FOUND_ROWS ".str_replace(" , ", " ", implode(", ", $aColumns))."
 		FROM   $sTable a
-		LEFT JOIN inventory b ON b.material_no = a.material_no
+		LEFT JOIN contract_details c ON c.contract_id = a.contract_id AND c.seq = a.seq
+		
 		$sWhere
 		$sOrder
 		$sLimit

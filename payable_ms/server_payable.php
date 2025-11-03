@@ -30,10 +30,10 @@
 	 * you want to insert a non-database field (for example a counter or static image)
 	 */
 	
-	$aColumns = array( 'purchase_order_id','purchase_type','requirement_description','order_date','delivery_date','auto_seq','status');
+	$aColumns = array( 'a.payable_order_id','a.payable_type','a.invoice_no','a.requirement_description','a.invoice_order_date','a.auto_seq','a.payable_status','b.supplier_name');
 
 	/* Indexed column (used for fast and accurate table cardinality) */
-	$sIndexColumn = "purchase_order_id";
+	$sIndexColumn = "payable_order_id";
 	
 	/* DB table to use */
 	$sTable = "payable";
@@ -41,7 +41,7 @@
 //	include( $_SERVER['DOCUMENT_ROOT']."/class/products_db.php" );
 	include( "/website/class/".$site_db."_db.php" );
 	
-	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 	 * If you just want to use the basic configuration for DataTables with PHP server-side, there is
 	 * no need to edit below this line
 	 */
@@ -69,7 +69,7 @@
 	/*
 	 * Ordering
 	 */
-	$sOrder = "ORDER BY order_date DESC ";
+	$sOrder = "ORDER BY invoice_order_date DESC ";
 	/*
 	if ( isset( $_GET['iSortCol_0'] ) )
 	{
@@ -133,14 +133,15 @@
 	 
 	
 	if ($sWhere=="")
-		$sWhere = "WHERE (purchase_order_id <> '') ";
+		$sWhere = "WHERE (payable_order_id <> '') ";
 	else
-		$sWhere .= " and (purchase_order_id <> '') ";
+		$sWhere .= " and (payable_order_id <> '') ";
 	
 	
 	$sQuery = "
 		SELECT SQL_CALC_FOUND_ROWS ".str_replace(" , ", " ", implode(", ", $aColumns))."
-		FROM   $sTable
+		FROM   $sTable a
+		LEFT JOIN supplier b ON b.supplier_id = a.supplier_id
 		$sWhere
 		$sOrder
 		$sLimit
@@ -189,9 +190,16 @@
 			else if ( $aColumns[$i] != ' ' )
 			{
 				/* General output */
-				$row[] = $aRow[ $aColumns[$i] ];
+				//$row[] = $aRow[ $aColumns[$i] ];
+
+				$field = $aColumns[$i];
+				$field = str_replace("a.","",$field);
+				$field = str_replace("b.","",$field);
+				$field = str_replace("c.","",$field);
 
 				
+				$row[] = $aRow[ $field ];
+
 			}
 		}
 		$output['aaData'][] = $row;
