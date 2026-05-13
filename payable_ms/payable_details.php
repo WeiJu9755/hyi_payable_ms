@@ -38,6 +38,7 @@ $list_view=<<<EOT
 		<thead class="table-light border-dark">
 			<tr style="border-bottom: 1px solid #000;">
 				<th scope="col" class="text-center text-nowrap" style="width:3%;">序</th>
+				<th scope="col" class="text-center text-nowrap" style="width:15%;">合約</th>
 				<th scope="col" class="text-center text-nowrap" style="width:15%;">合約項次</th>
 				<th scope="col" class="text-center text-nowrap" style="width:3%;">單位</th>
 				<th scope="col" class="text-center text-nowrap" style="width:5%;">單價</th>

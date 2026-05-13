@@ -30,7 +30,7 @@
 	 * you want to insert a non-database field (for example a counter or static image)
 	 */
 	
-	$aColumns = array( 'a.payable_order_id','a.payable_type','a.invoice_no','a.requirement_description','a.invoice_order_date','a.auto_seq','a.payable_status','b.supplier_name');
+	$aColumns = array( 'a.payable_order_id','a.payable_type','a.invoice_no','a.requirement_description','a.invoice_order_date','a.auto_seq','a.payable_status','b.supplier_name','a.invoice_amt');
 
 	/* Indexed column (used for fast and accurate table cardinality) */
 	$sIndexColumn = "payable_order_id";
