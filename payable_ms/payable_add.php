@@ -59,11 +59,11 @@ function processform($aFormValues){
 
 	}
 
-	if (trim($aFormValues['supplier_id']) == "") {
-		$objResponse->script("jAlert('警示', '請選擇廠商', 'red', '', 2000);");
-		return $objResponse;
+	// if (trim($aFormValues['supplier_id']) == "") {
+	// 	$objResponse->script("jAlert('警示', '請選擇廠商', 'red', '', 2000);");
+	// 	return $objResponse;
 
-	}
+	// }
 
 	
 	
@@ -158,15 +158,24 @@ function processform($aFormValues){
 )";
 	$mDB->query($Qry);
 
+	$Qry="select auto_seq from payable where payable_order_id = '$payable_order_id' order by auto_seq desc limit 0,1";
+		$mDB->query($Qry);
+		if ($mDB->rowCount() > 0) {
+			//已找到符合資料
+			$row=$mDB->fetchRow(2);
+			$auto_seq = $row['auto_seq'];
+		}
+
 	$mDB->remove();
-	if (!empty($payable_order_id)) {
-		$objResponse->script("myDraw();");
-		$objResponse->script("art.dialog.tips('已新增，請繼續輸入其他資料...',2);");
-		$objResponse->script("parent.$.fancybox.close();");
-	} else {
-		$objResponse->script("jAlert('警示', '發生不明原因的錯誤，資料未新增，請再試一次!', 'red', '', 2000);");
-		$objResponse->script("parent.$.fancybox.close();");
-	}
+	if (!empty($auto_seq)) {
+			$objResponse->script("myDraw();");
+			//$objResponse->script("art.dialog.tips('已新增，請繼續輸入其他資料...',2);");
+			$objResponse->script("window.location='/?ch=edit&auto_seq=$auto_seq&fm=$fm';");
+			
+		} else {
+			//$objResponse->script("art.dialog.alert('發生不明原因的錯誤，資料未新增，請再試一次!');");
+			$objResponse->script("parent.$.fancybox.close();");
+		}
 	
 	return $objResponse;	
 }
@@ -220,14 +229,14 @@ if ($mDB->rowCount() > 0) {
 
 $Qry="SELECT supplier_id,supplier_name,short_name FROM supplier ORDER BY supplier_id";
 $mDB->query($Qry);
-$select_supplier = "";
-$select_supplier .= "<option></option>";
+$supplier_list = "";
 
 if ($mDB->rowCount() > 0) {
 	while ($row=$mDB->fetchRow(2)) {
-		$supplier_id = $row['supplier_id'];
-		$supplier_name = $row['supplier_name'];
-		$select_supplier .= "<option value=\"$supplier_id\" ".mySelect($supplier_id,"").">$supplier_id $supplier_name</option>";
+		$ch_supplier_id = $row['supplier_id'];
+		$ch_supplier_name = $row['supplier_name'];
+		$supplier_list .= "<option value=\"$ch_supplier_id\">$ch_supplier_id $ch_supplier_name</option>";
+
 	}
 }
 
@@ -305,7 +314,8 @@ EOT;
 
 }
 	
-
+$m_location		= "/smarty/templates/".$site_db."/".$templates;
+$ajax_get_supplier = $m_location."/sub_modal/project/func09/payable_ms/ajax_get_supplier.php";
 
 $show_center=<<<EOT
 $style_css
@@ -421,9 +431,11 @@ $style_css
 							<div class="col-lg-12 col-sm-12 col-md-12">
 								<div class="field_div1">供應商:</div> 
 								<div class="field_div2">
-									<select id="supplier_id" name="supplier_id" placeholder="請選擇廠商" style="width:100%;max-width:250px;">
-										$select_supplier
-									</select>
+									<input list="supplier_list" type="text" class="inputtext w-100" id="supplier_id" name="supplier_id" autocomplete="off" style="width:100%;max-width:250px;"/>
+							<datalist id="supplier_list">
+								$supplier_list
+							</datalist>
+							<div id="supplier_info"></div>
 								</div> 
 							</div> 
 						</div>
@@ -470,7 +482,33 @@ var myDraw = function(){
 	oTable.fnDraw(false);
 }
 
+$('#supplier_id').on('input', function() {
+    var supplier_id = $(this).val();  // 即時取得 input 的值
+    //$('#supplier_info').text(supplier_id);   // 顯示在畫面上
+	if (supplier_id !== '') {
+		$.ajax({
+			url: '$ajax_get_supplier', // 後端 PHP 檔案
+			method: 'POST',
+			data: { site_db : '$site_db', supplier_id: supplier_id },
+			dataType: 'json',
+			success: function (response) {
+				if (response.success) {
+					$('#supplier_info').text(response.supplier_name);
+				} else {
+					$('#supplier_info').text('');
+				}
 
+			},
+			error: function () {
+		    	$('#supplier_info').text('');   // 顯示在畫面上
+			}
+		});
+
+	} else {
+    	$('#supplier_info').text('');   // 顯示在畫面上
+	}
+
+  });
 
 </script>
 EOT;

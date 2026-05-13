@@ -239,11 +239,13 @@ if ($total > 0) {
 	$location = $row['location'];
 	$handler_id = $row['handler_id'];
 	$invoice_no = $row['invoice_no'];
-	$invoice_amt = number_format($row['invoice_amt'], 2);
+	$invoice_amt_tmp = $row['invoice_amt'];
 	$payable_status = $row['payable_status'];
 	$employee_name = $row['employee_name'];
 	$requirement_description = $row['requirement_description'];
 	$last_modify = $row['last_modify'];
+
+	$invoice_amt = number_format($invoice_amt_tmp,2);
   
 }
 
