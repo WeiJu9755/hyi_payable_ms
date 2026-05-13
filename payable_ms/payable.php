@@ -254,12 +254,33 @@ EOT;
 	$show_modify_btn = <<<EOT
 <div class="text-center my-2">
 	<div class="btn-group me-2 mb-2" role="group">
-		<button type="button" class="btn btn-danger text-nowrap" onclick="openfancybox_edit('/index.php?ch=add&t=$t&fm=$fm',1200,'90%','');"><i class="bi bi-plus-circle"></i>&nbsp;新增項目</button>
+		<button type="button" class="btn btn-danger text-nowrap" onclick="openfancybox_edit('/index.php?ch=add&t=$t&fm=$fm',1600,'100%','');"><i class="bi bi-plus-circle"></i>&nbsp;新增項目</button>
 		<button type="button" class="btn btn-success text-nowrap" onclick="myDraw();"><i class="bi bi-arrow-repeat"></i>&nbsp;重整</button>
 	</div>
 </div>
 $show_admin_list
 EOT;
+
+// if (!($detect->isMobile() && !$detect->isTablet())) {
+
+// $show_ConfirmSending_btn=<<<EOT
+// 	<div class="size14" style="width:150px;position: relative;margin: 27px 0 -27px 200px;z-index:999;">
+// 		<input type="checkbox" class="inputtext" name="ShowConfirmSending" id="ShowConfirmSending" value="Y" $m_ShowConfirmSending pjt="$m_pjt" project_id= "$project_id" auth_id="$auth_id"/>
+// 		<label for="ShowConfirmSending" style="cursor:pointer;">顯示已確認資料</label>
+// 	</div>
+// EOT;
+
+// 		} else {
+
+// $show_ConfirmSending_btn=<<<EOT
+// 	<div class="size14 w-200 text-center m-auto mb-3" style="z-index:999;">
+// 		<input type="checkbox" class="inputtext" name="ShowConfirmSending" id="ShowConfirmSending" value="Y" $m_ShowConfirmSending pjt="$m_pjt" project_id= "$project_id" auth_id="$auth_id"/>
+// 		<label for="ShowConfirmSending" style="cursor:pointer;">顯示已確認資料</label>
+// 	</div>
+// EOT;
+
+// 		}
+
 
 
 
@@ -271,7 +292,7 @@ EOT;
 				$member_logo
 			</div> 
 			<div class="col-lg-8 col-sm-12 col-md-12 p-1">
-				<div class="size20 pt-1 text-center">應付款項管理</div>
+				<div class="size20 pt-1 text-center">廠商發票管理</div>
 				$show_modify_btn
 				$show_disabled_warning
 			</div> 
@@ -279,14 +300,16 @@ EOT;
 			</div> 
 		</div>
 	</div>
+	$show_ConfirmSending_btn
 	<table class="table table-bordered border-dark w-100" id="db_table" style="min-width:1000px;">
 		<thead class="table-light border-dark">
 			<tr style="border-bottom: 1px solid #000;">
 
 				<th scope="col" class="text-center" style="width:7%;">項目單號</th>
 				<th scope="col" class="text-center" style="width:7%;">供應商</th>
-				<th scope="col" class="text-center" style="width:7%;">應付性質</th>
+				<th scope="col" class="text-center" style="width:7%;">發票性質</th>
 				<th scope="col" class="text-center" style="width:7%;">發票號碼</th>
+				<th scope="col" class="text-center" style="width:7%;">發票金額</th>
 				<th scope="col" class="text-center" style="width:25%;">需求說明</th>
 				<th scope="col" class="text-center" style="width:7%;">發票日期</th>
 				<th scope="col" class="text-center" style="width:7%;">附檔</th>
@@ -336,7 +359,7 @@ $list_view
 			"pagingType": "full_numbers",  //分頁樣式： simple,simple_numbers,full,full_numbers
 			"searching": true,  //禁用原生搜索
 			"ordering": false,
-			"ajaxSource": "/smarty/templates/$site_db/$templates/sub_modal/project/func09/payable_ms/server_payable.php?site_db=$site_db",
+			"ajaxSource": "/smarty/templates/$site_db/$templates/sub_modal/project/func09/payable_ms/server_payable.php?site_db=$site_db&payable_statu =$payable_status",
 			"language": {
 						"sUrl": "$dataTable_de"
 					},
@@ -370,18 +393,26 @@ $list_view
 					invoice_no = aData[2];
 				}
 				$('td:eq(3)', nRow).html('<div class="size14 weight blue02 text-center">'+invoice_no+'</div>');
+
+				// 發票金額
+				var invoice_amt = "";
+				if (aData[8] != null && aData[8] != "") {
+					// 使用新的函式來格式化 aData[8] 的值
+					invoice_amt = formatNumberWithCommas(aData[8]);
+				}
+				$('td:eq(4)', nRow).html('<div class="size14 weight  text-center">' + invoice_amt + '</div>');
 				// 需求說明
 				var requirement_description = '';
 				if (aData[3] != null && aData[3] != "" ) {
 					requirement_description = aData[3];
 				}
-				$('td:eq(4)', nRow).html('<div class="size14 text-center">'+requirement_description+'</div>');
+				$('td:eq(5)', nRow).html('<div class="size14 text-center">'+requirement_description+'</div>');
 				// 發票日期
 				var invoice_order_date = '';
 				if (aData[4] != null && aData[4] != "") {
 					invoice_order_date = aData[4];
 				}
-				$('td:eq(5)', nRow).html('<div class="size14 text-center">'+invoice_order_date+'</div>');
+				$('td:eq(6)', nRow).html('<div class="size14 text-center">'+invoice_order_date+'</div>');
 				// 附檔
 				var payable_status = '';
 				if (aData[6] != null && aData[6] != "") {
@@ -395,7 +426,7 @@ $list_view
 				var files_total = '<div class="d-flex justify-content-center align-items-center size12 text-center mt-2" id="files_total'+aData[5]+'"></div>';
 				xajax_returnValue('$web_id','$project_id','$auth_id',aData[5],'payable');
 
-				$('td:eq(6)', nRow).html( '<a href="javascript:void(0);" onclick="'+url3+'" title="上傳檔案">'+files_total+'</a>' );
+				$('td:eq(7)', nRow).html( '<a href="javascript:void(0);" onclick="'+url3+'" title="上傳檔案">'+files_total+'</a>' );
 
 				var mdel = "myDel('" + aData[0] + "');";
 				if (payable_status == '已結單') {
@@ -411,7 +442,7 @@ $list_view
 							+ '</div>';
 						}
 				
-				$('td:eq(7)', nRow).html('<div class="text-center">'+show_btn+'</div>');
+				$('td:eq(8)', nRow).html('<div class="text-center">'+show_btn+'</div>');
 
 				return nRow;
 			}
@@ -446,7 +477,22 @@ var myDraw = function(){
 	oTable.fnDraw(false);
 }
 
+function formatNumberWithCommas(number) {
+					if (number === null || number === undefined || number === "") {
+						return "";
+					}
+					// 將輸入值轉換為數字，並確保其為有效數字
+					const num = parseFloat(number);
+					if (isNaN(num)) {
+						return number; // 如果不是數字，則直接返回原始值
+					}
 
+					// 將數字四捨五入到小數點後兩位（如果需要）
+					// const formattedNum = num.toFixed(2); `
+
+					// 轉換成千分位格式
+					return num.toLocaleString('en-US'); // 使用 toLocaleString 進行轉換
+				}
 
 </script>
 
